@@ -1,21 +1,41 @@
 pipeline {
-    agent any  // Runs on any available Jenkins agent
+    agent any
 
-    tools {
-        maven 'M2_HOME'  // Use Maven installed in Jenkins
-        jdk 'JAVA_HOME'  // Use JDK installed in Jenkins
+    environment {
+        JENKINS_URL = 'http://localhost:8090'
+        SONARQUBE_SERVER = 'http://localhost:9000'
+        MYSQL_URL = 'jdbc:mysql://mysql:3306/springdb'
     }
 
     stages {
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/nanna3210/demoAppSpring.git'
+                git 'https://github.com/nanna3210/demoAppSpring.git'
             }
         }
 
-        stage('Build & Test') {
+        stage('Build') {
             steps {
-                sh 'mvn clean install'  // Build and run tests
+                sh './mvnw clean package'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh './mvnw test'
+            }
+        }
+
+        stage('Code Analysis with SonarQube') {
+            steps {
+                sh "./mvnw sonar:sonar -Dsonar.projectKey=spring-app -Dsonar.host.url=${SONARQUBE_SERVER} -Dsonar.login=your-sonar-token"
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh 'docker build -t spring-app .'
+                sh 'docker run -d --name spring-app --network dev-network -p 8081:8080 spring-app'
             }
         }
     }
